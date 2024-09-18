@@ -1,5 +1,7 @@
 import openstack
 import dateutil.parser as date_parser
+import argparse
+from datetime import datetime,timedelta,timezone
 
 # We want to filter out events that are just noise
 # e.g. volume attachments, snapshots, etc.
@@ -138,3 +140,50 @@ def get_total_charge_for_instance(conn, instance_id, start, end):
         total_charge += interval_duration * total_multiplier
 
     return total_charge
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="IndySCC 2024 Accounting Script")
+    parser.add_argument("team_id", type=str, help="Your team's submission ID (e.g. \"scc999\")")
+    
+    seven_days_ago_in_iso8601 = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    
+    parser.add_argument(
+        "--start",
+        type=str,
+        nargs="?",
+        default=seven_days_ago_in_iso8601,
+        help="An ISO-8601-formatted timestamp representing the start of the accounting period. (e.g. \"2024-09-11T14:28:45.955158+00:00\")"
+    )
+    parser.add_argument(
+        "--end",
+        type=str,
+        nargs="?",
+        default=(datetime.now(timezone.utc)).isoformat(),
+        help="An ISO-8601-formatted timestamp representing the end of the accounting period. (e.g. \"2024-09-11T14:28:45.955158+00:00\")"
+    )
+
+    args = parser.parse_args()
+    conn = openstack.connect()
+
+    servers = list(conn.compute.servers())
+    servers = list(filter(lambda server: server.name.startswith(args.team_id), servers))
+
+    if len(servers) == 0:
+        raise ValueError(f"No servers found for team \"{args.team_id}\"")
+    
+    start = ""
+    end = ""
+    try:
+        start = date_parser.parse(args.start)
+        end = date_parser.parse(args.end)
+    except date_parser._parser.ParserError:
+        print("Could not parse start/end timestamp.")
+        exit()
+    
+    sum = 0
+    for server in servers:
+        charge = round(get_total_charge_for_instance(conn, server.id, start, end), 2)
+        print(f"{server.name}: {charge} SUs")
+        sum += charge
+
+    print(f"Total: {sum} SUs")
