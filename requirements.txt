@@ -1,2 +1,2 @@
 openstacksdk==4.0.0
-dateutil
+python-dateutil
