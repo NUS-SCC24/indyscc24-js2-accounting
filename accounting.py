@@ -143,7 +143,13 @@ def get_total_charge_for_instance(conn, instance_id, start, end):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="IndySCC 2024 Accounting Script")
-    parser.add_argument("team_id", type=str, help="Your team's submission ID (e.g. \"scc999\")")
+    parser.add_argument(
+        "team_id",
+        type=str,
+        nargs="?",
+        default="scc131",
+        help="Your team's submission ID (e.g. \"scc999\")"
+    )
     
     seven_days_ago_in_iso8601 = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     
